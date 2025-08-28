@@ -32,71 +32,101 @@
       margin-top: 12px;
       color: #94a3b8;
     }
+    .disclaimer {
+      margin-top: 24px;
+      font-size: 0.9em;
+      color: #94a3b8;
+      max-width: 820px;
+      margin-left: auto;
+      margin-right: auto;
+      line-height: 1.4;
+    }
   </style>
 </head>
 <body>
-  <h1>Mosquito-Borne Disease Impact Counter</h1>
+  <h1>Mosquito Borne Disease Impact Counter</h1>
+
   <div class="controls">
     <button id="startBtn">Start</button>
     <button id="resetBtn" class="secondary">Reset</button>
     <div class="elapsed" id="elapsed">Elapsed time 00:00</div>
   </div>
 
-  <div class="counter" id="deaths">Mosquito-related deaths during this talk: 0</div>
+  <div class="counter" id="deaths">Mosquito related deaths during this talk: 0</div>
   <div class="counter" id="infections">Dengue infections occurred during this talk: 0</div>
   <div class="counter" id="riskRate">People having the chance of contracting the disease during this talk: 0</div>
 
+  <div class="disclaimer">
+    These counters are illustrative approximations based on global yearly estimates that are distributed evenly across a 365 day year. They do not represent real time surveillance data.
+  </div>
+
   <script>
+    // Yearly totals
     const YEARLY_DEATHS = 1000000;
     const YEARLY_INFECTIONS = 400000000;
     const AT_RISK_TOTAL = 3900000000;
+
+    // Constants
     const SECONDS_PER_YEAR = 365 * 24 * 60 * 60;
 
-    const deathsPerSec = YEARLY_DEATHS / SECONDS_PER_YEAR;
-    const infectionsPerSec = YEARLY_INFECTIONS / SECONDS_PER_YEAR;
-    const atRiskPerSec = AT_RISK_TOTAL / SECONDS_PER_YEAR; // ≈124/sec
+    // Per second rates
+    const deathsPerSec = YEARLY_DEATHS / SECONDS_PER_YEAR;       // ~0.032
+    const infectionsPerSec = YEARLY_INFECTIONS / SECONDS_PER_YEAR; // ~12.7
+    const atRiskPerSec = AT_RISK_TOTAL / SECONDS_PER_YEAR;       // ~124
 
-    let deaths = 0;
-    let infections = 0;
-    let riskAdded = 0;
-    let elapsedSeconds = 0;
+    // State
+    let startTime = null;     // ms since epoch
     let intervalId = null;
 
-    function fmt(n) { return Math.round(n).toLocaleString(); }
-    function pad(n) { return String(n).padStart(2, "0"); }
+    // Helpers
+    const fmt = n => Math.round(n).toLocaleString();
+    const pad = n => String(n).padStart(2, "0");
 
-    function updateElapsed() {
-      const m = Math.floor(elapsedSeconds / 60);
-      const s = elapsedSeconds % 60;
-      document.getElementById("elapsed").textContent = "Elapsed time " + pad(m) + ":" + pad(s);
+    function update() {
+      if (!startTime) return;
+      const now = Date.now();
+      const elapsedSec = (now - startTime) / 1000;
+
+      // Compute from real elapsed time to avoid drift
+      const deaths = deathsPerSec * elapsedSec;
+      const infections = infectionsPerSec * elapsedSec;
+      const riskAdded = atRiskPerSec * elapsedSec;
+
+      // Update counters
+      document.getElementById("deaths").textContent =
+        "Mosquito related deaths during this talk: " + fmt(deaths);
+      document.getElementById("infections").textContent =
+        "Dengue infections occurred during this talk: " + fmt(infections);
+      document.getElementById("riskRate").textContent =
+        "People having the chance of contracting the disease during this talk: " + fmt(riskAdded);
+
+      // Update elapsed clock
+      const m = Math.floor(elapsedSec / 60);
+      const s = Math.floor(elapsedSec % 60);
+      document.getElementById("elapsed").textContent =
+        "Elapsed time " + pad(m) + ":" + pad(s);
     }
 
-    function tick() {
-      elapsedSeconds += 2;
-      updateElapsed();
-      deaths += deathsPerSec * 2;
-      infections += infectionsPerSec * 2;
-      riskAdded += atRiskPerSec * 2;
-      document.getElementById("deaths").textContent = "Mosquito-related deaths during this talk: " + fmt(deaths);
-      document.getElementById("infections").textContent = "Dengue infections occurred during this talk: " + fmt(infections);
-      document.getElementById("riskRate").textContent = "People having the chance of contracting the disease during this talk: " + fmt(riskAdded);
-    }
-
-    document.getElementById("startBtn").addEventListener("click", function() {
-      if (intervalId) return;
-      intervalId = setInterval(tick, 2000);
+    // Start uses real time and a short interval for smooth updates
+    document.getElementById("startBtn").addEventListener("click", function () {
+      if (intervalId) return; // already running
+      startTime = Date.now();
+      update(); // immediate paint
+      intervalId = setInterval(update, 250);
     });
 
-    document.getElementById("resetBtn").addEventListener("click", function() {
+    // Reset stops the timer and clears values
+    document.getElementById("resetBtn").addEventListener("click", function () {
       if (intervalId) { clearInterval(intervalId); intervalId = null; }
-      deaths = 0; infections = 0; riskAdded = 0; elapsedSeconds = 0;
-      updateElapsed();
-      document.getElementById("deaths").textContent = "Mosquito-related deaths during this talk: 0";
-      document.getElementById("infections").textContent = "Dengue infections occurred during this talk: 0";
-      document.getElementById("riskRate").textContent = "People having the chance of contracting the disease during this talk: 0";
+      startTime = null;
+      document.getElementById("elapsed").textContent = "Elapsed time 00:00";
+      document.getElementById("deaths").textContent =
+        "Mosquito related deaths during this talk: 0";
+      document.getElementById("infections").textContent =
+        "Dengue infections occurred during this talk: 0";
+      document.getElementById("riskRate").textContent =
+        "People having the chance of contracting the disease during this talk: 0";
     });
-
-    updateElapsed();
   </script>
 </body>
 </html>
